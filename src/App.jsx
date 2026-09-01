@@ -37,6 +37,20 @@ async function insertBooking(payload) {
   }
 }
 
+async function updateBookingStatus(id, status) {
+  try {
+    const res = await fetch(`${REST_URL}?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { ...REST_HEADERS, Prefer: "return=representation" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) return { error: await res.text() };
+    return { error: null };
+  } catch (err) {
+    return { error: String(err) };
+  }
+}
+
 // ---- Design tokens ----
 // Coastal kampung feel for Paka, Terengganu: sandy paper base, deep sea-teal accent,
 // warm charcoal text. Serif display (evokes traditional homestay warmth) + clean sans body.
@@ -54,6 +68,8 @@ const WEEKDAY_PRICE = 180;
 const WEEKEND_PRICE = 220;
 const UNIT_NAME = "Zulmaidi Homestay";
 const UNIT_LOCATION = "Paka, Dungun, Terengganu";
+const CHECK_IN_TIME = "2:00 PM";
+const CHECK_OUT_TIME = "12:00 PM";
 
 function fmtDate(d) {
   const y = d.getFullYear();
@@ -245,6 +261,22 @@ export default function App() {
     setViewYear(y);
   }
 
+  async function confirmBooking(id) {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "Confirming..." } : b))
+    );
+    const { error } = await updateBookingStatus(id, "Confirmed");
+    if (error) {
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "Pending confirmation" } : b))
+      );
+      return;
+    }
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "Confirmed" } : b))
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: COLORS.sand, color: COLORS.charcoal, fontFamily: "'Georgia', 'Iowan Old Style', serif" }}>
       <style>{`
@@ -289,7 +321,7 @@ export default function App() {
             </h1>
             <p className="sans" style={{ fontSize: 16, lineHeight: 1.6, color: COLORS.charcoal, maxWidth: 560 }}>
               One comfortable home, a short drive from the beach and Paka town. Air-conditioned rooms,
-              full kitchen, and free parking — ideal for families passing through Terengganu's east coast.
+              full kitchen, and free parking, ideal for families passing through Terengganu's east coast.
             </p>
             <div className="sans" style={{ display: "flex", gap: 24, marginTop: 20, fontSize: 14 }}>
               <div><strong style={{ color: COLORS.tealDeep }}>RM{WEEKDAY_PRICE}</strong> / weeknight</div>
@@ -342,7 +374,7 @@ export default function App() {
             <form onSubmit={submitBooking} className="sans" style={{ background: COLORS.white, border: `1px solid ${COLORS.sandDeep}`, borderRadius: 10, padding: 20 }}>
               <div style={{ fontSize: 13, marginBottom: 14, color: COLORS.tealDeep, fontWeight: 600 }}>
                 {checkIn && checkOut
-                  ? `${fmtDate(checkIn)} \u2192 ${fmtDate(checkOut)} \u00b7 ${nightsBetween(checkIn, checkOut)} night(s) \u00b7 RM${totalPrice()}`
+                  ? `${fmtDate(checkIn)} (${CHECK_IN_TIME}) \u2192 ${fmtDate(checkOut)} (${CHECK_OUT_TIME}) \u00b7 ${nightsBetween(checkIn, checkOut)} night(s) \u00b7 RM${totalPrice()}`
                   : checkIn
                   ? `Check-in ${fmtDate(checkIn)} \u2014 now pick check-out`
                   : "Select your dates on the calendar"}
@@ -403,15 +435,25 @@ export default function App() {
           </div>
           {bookings.map((b) => (
             <div key={b.id} style={{ background: COLORS.white, border: `1px solid ${COLORS.sandDeep}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <strong>{b.guestName}</strong>
-                <span style={{ fontSize: 12, color: COLORS.rust }}>{b.status}</span>
+                <span style={{ fontSize: 12, color: b.status === "Confirmed" ? COLORS.teal : COLORS.rust }}>
+                  {b.status}
+                </span>
               </div>
               <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>
-                {b.checkIn} → {b.checkOut} · {b.nights} night(s) · RM{b.total}<br />
+                {b.checkIn} ({CHECK_IN_TIME}) → {b.checkOut} ({CHECK_OUT_TIME}) · {b.nights} night(s) · RM{b.total}<br />
                 {b.guests} guest(s) · {b.phone}
                 {b.notes && <><br />Note: {b.notes}</>}
               </div>
+              {b.status === "Pending confirmation" && (
+                <button
+                  onClick={() => confirmBooking(b.id)}
+                  style={{ marginTop: 12, padding: "6px 14px", borderRadius: 6, border: "none", background: COLORS.teal, color: COLORS.white, fontSize: 13 }}
+                >
+                  Mark as confirmed
+                </button>
+              )}
             </div>
           ))}
         </div>
