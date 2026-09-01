@@ -71,6 +71,13 @@ const UNIT_LOCATION = "Paka, Dungun, Terengganu";
 const CHECK_IN_TIME = "2:00 PM";
 const CHECK_OUT_TIME = "12:00 PM";
 
+// ---- EDIT THIS: your real bank details ----
+const BANK_NAME = "Maybank";
+const BANK_ACCOUNT_NUMBER = "1234 5678 9012";
+const BANK_ACCOUNT_HOLDER = "Zulmaidi bin XXXXX";
+const WHATSAPP_NUMBER = "60123456789"; // no + or spaces, country code first
+// --------------------------------------------
+
 const ADMIN_PASSWORD = "zulmaidi2026"; // change this to whatever your dad will remember
 
 function fmtDate(d) {
@@ -120,6 +127,7 @@ export default function App() {
   const [bookings, setBookings] = useState([]);
   const [view, setView] = useState("public"); // "public" | "adminLogin" | "admin"
   const [confirmMsg, setConfirmMsg] = useState("");
+  const [lastBooking, setLastBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
@@ -249,9 +257,13 @@ export default function App() {
 
     await loadBookings();
 
-    setConfirmMsg(
-      `Request sent! ${nights} night(s), RM${total} total. ${UNIT_NAME.split(" ")[0]} will confirm via WhatsApp shortly.`
-    );
+    setLastBooking({
+      guestName: form.name,
+      checkIn: fmtDate(checkIn),
+      checkOut: fmtDate(checkOut),
+      nights,
+      total,
+    });
     setCheckIn(null);
     setCheckOut(null);
     setForm({ name: "", phone: "", guests: 2, notes: "" });
@@ -327,6 +339,44 @@ export default function App() {
       </div>
 
       {view === "public" ? (
+        lastBooking ? (
+          <div className="sans" style={{ maxWidth: 480, margin: "0 auto", padding: "60px 24px 80px" }}>
+            <h2 style={{ fontFamily: "'Georgia', serif", color: COLORS.tealDeep, marginBottom: 8 }}>
+              Request sent, {lastBooking.guestName.split(" ")[0]}
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+              {lastBooking.checkIn} ({CHECK_IN_TIME}) → {lastBooking.checkOut} ({CHECK_OUT_TIME}) · {lastBooking.nights} night(s) · <strong>RM{lastBooking.total}</strong>
+            </p>
+
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.sandDeep}`, borderRadius: 10, padding: 20, marginBottom: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 10, color: COLORS.tealDeep }}>To confirm your stay, transfer to:</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8 }}>
+                Bank: <strong>{BANK_NAME}</strong><br />
+                Account number: <strong>{BANK_ACCOUNT_NUMBER}</strong><br />
+                Account holder: <strong>{BANK_ACCOUNT_HOLDER}</strong><br />
+                Amount: <strong>RM{lastBooking.total}</strong>
+              </div>
+            </div>
+
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                `Hi, I just requested a booking for ${lastBooking.checkIn} to ${lastBooking.checkOut} (RM${lastBooking.total}). Here's my payment proof.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "block", textAlign: "center", padding: "10px 0", borderRadius: 6, background: COLORS.teal, color: COLORS.white, fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+            >
+              Send payment proof on WhatsApp
+            </a>
+
+            <button
+              onClick={() => setLastBooking(null)}
+              style={{ display: "block", margin: "20px auto 0", border: "none", background: "none", color: COLORS.charcoal, opacity: 0.5, fontSize: 13 }}
+            >
+              ← Back to booking page
+            </button>
+          </div>
+        ) : (
         <div style={{ maxWidth: 880, margin: "0 auto", padding: "40px 24px 80px" }}>
           {/* Hero */}
           <div style={{ marginBottom: 40 }}>
@@ -445,6 +495,7 @@ export default function App() {
             </button>
           </div>
         </div>
+        )
       ) : view === "adminLogin" ? (
         <div className="sans" style={{ maxWidth: 360, margin: "0 auto", padding: "80px 24px" }}>
           <h2 style={{ fontFamily: "'Georgia', serif", color: COLORS.tealDeep, marginBottom: 16 }}>Owner login</h2>
