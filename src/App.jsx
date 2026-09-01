@@ -71,6 +71,8 @@ const UNIT_LOCATION = "Paka, Dungun, Terengganu";
 const CHECK_IN_TIME = "2:00 PM";
 const CHECK_OUT_TIME = "12:00 PM";
 
+const ADMIN_PASSWORD = "zulmaidi2026"; // change this to whatever your dad will remember
+
 function fmtDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -116,10 +118,12 @@ export default function App() {
   const [checkOut, setCheckOut] = useState(null);
   const [form, setForm] = useState({ name: "", phone: "", guests: 2, notes: "" });
   const [bookings, setBookings] = useState([]);
-  const [view, setView] = useState("public"); // "public" | "admin"
+  const [view, setView] = useState("public"); // "public" | "adminLogin" | "admin"
   const [confirmMsg, setConfirmMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [adminError, setAdminError] = useState("");
 
   async function loadBookings() {
     setLoading(true);
@@ -154,6 +158,7 @@ export default function App() {
   const bookedDates = useMemo(() => {
     const set = new Set();
     bookings.forEach((b) => {
+      if (b.status === "Cancelled") return;
       let d = parseLocalDate(b.checkIn);
       const end = parseLocalDate(b.checkOut);
       while (d < end) {
@@ -252,6 +257,17 @@ export default function App() {
     setForm({ name: "", phone: "", guests: 2, notes: "" });
   }
 
+  function handleAdminLogin(e) {
+    e.preventDefault();
+    if (adminPasswordInput === ADMIN_PASSWORD) {
+      setView("admin");
+      setAdminError("");
+      setAdminPasswordInput("");
+    } else {
+      setAdminError("Wrong password.");
+    }
+  }
+
   function changeMonth(delta) {
     let m = viewMonth + delta;
     let y = viewYear;
@@ -277,6 +293,23 @@ export default function App() {
     );
   }
 
+  async function cancelBooking(id) {
+    const prevStatus = bookings.find((b) => b.id === id)?.status;
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "Cancelling..." } : b))
+    );
+    const { error } = await updateBookingStatus(id, "Cancelled");
+    if (error) {
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: prevStatus } : b))
+      );
+      return;
+    }
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "Cancelled" } : b))
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: COLORS.sand, color: COLORS.charcoal, fontFamily: "'Georgia', 'Iowan Old Style', serif" }}>
       <style>{`
@@ -291,24 +324,6 @@ export default function App() {
       {/* Nav */}
       <div className="sans" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 28px", borderBottom: `1px solid ${COLORS.sandDeep}` }}>
         <div style={{ fontFamily: "'Georgia', serif", fontSize: 20, fontWeight: 700, color: COLORS.tealDeep }}>{UNIT_NAME}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setView("public")}
-            style={{
-              padding: "8px 16px", borderRadius: 6, border: `1px solid ${COLORS.teal}`,
-              background: view === "public" ? COLORS.teal : "transparent",
-              color: view === "public" ? COLORS.white : COLORS.teal, fontSize: 14,
-            }}
-          >Book a stay</button>
-          <button
-            onClick={() => setView("admin")}
-            style={{
-              padding: "8px 16px", borderRadius: 6, border: `1px solid ${COLORS.teal}`,
-              background: view === "admin" ? COLORS.teal : "transparent",
-              color: view === "admin" ? COLORS.white : COLORS.teal, fontSize: 14,
-            }}
-          >Admin</button>
-        </div>
       </div>
 
       {view === "public" ? (
@@ -321,7 +336,7 @@ export default function App() {
             </h1>
             <p className="sans" style={{ fontSize: 16, lineHeight: 1.6, color: COLORS.charcoal, maxWidth: 560 }}>
               One comfortable home, a short drive from the beach and Paka town. Air-conditioned rooms,
-              full kitchen, and free parking, ideal for families passing through Terengganu's east coast.
+              full kitchen, and free parking — ideal for families passing through Terengganu's east coast.
             </p>
             <div className="sans" style={{ display: "flex", gap: 24, marginTop: 20, fontSize: 14 }}>
               <div><strong style={{ color: COLORS.tealDeep }}>RM{WEEKDAY_PRICE}</strong> / weeknight</div>
@@ -420,10 +435,50 @@ export default function App() {
               )}
             </form>
           </div>
+
+          <div className="sans" style={{ textAlign: "center", marginTop: 48 }}>
+            <button
+              onClick={() => setView("adminLogin")}
+              style={{ border: "none", background: "none", color: COLORS.charcoal, opacity: 0.4, fontSize: 12 }}
+            >
+              Homestay owner login
+            </button>
+          </div>
+        </div>
+      ) : view === "adminLogin" ? (
+        <div className="sans" style={{ maxWidth: 360, margin: "0 auto", padding: "80px 24px" }}>
+          <h2 style={{ fontFamily: "'Georgia', serif", color: COLORS.tealDeep, marginBottom: 16 }}>Owner login</h2>
+          <form onSubmit={handleAdminLogin}>
+            <input
+              type="password"
+              value={adminPasswordInput}
+              onChange={(e) => setAdminPasswordInput(e.target.value)}
+              placeholder="Password"
+              style={{ width: "100%", padding: "8px 10px", marginBottom: 12, borderRadius: 6, border: `1px solid ${COLORS.sandDeep}` }}
+            />
+            <button type="submit" style={{ width: "100%", padding: "10px 0", borderRadius: 6, border: "none", background: COLORS.teal, color: COLORS.white, fontSize: 14, fontWeight: 600 }}>
+              Log in
+            </button>
+            {adminError && <div style={{ marginTop: 10, fontSize: 13, color: COLORS.rust }}>{adminError}</div>}
+          </form>
+          <button
+            onClick={() => setView("public")}
+            style={{ marginTop: 16, border: "none", background: "none", color: COLORS.charcoal, opacity: 0.5, fontSize: 13 }}
+          >
+            ← Back to booking page
+          </button>
         </div>
       ) : (
         <div className="sans" style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px 80px" }}>
-          <h2 style={{ fontFamily: "'Georgia', serif", color: COLORS.tealDeep, marginBottom: 4 }}>Bookings</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <h2 style={{ fontFamily: "'Georgia', serif", color: COLORS.tealDeep, margin: 0 }}>Bookings</h2>
+            <button
+              onClick={() => setView("public")}
+              style={{ border: "none", background: "none", color: COLORS.charcoal, opacity: 0.5, fontSize: 13 }}
+            >
+              ← Back to public page
+            </button>
+          </div>
           <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 20 }}>
             {loading
               ? "Loading bookings..."
@@ -437,7 +492,7 @@ export default function App() {
             <div key={b.id} style={{ background: COLORS.white, border: `1px solid ${COLORS.sandDeep}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <strong>{b.guestName}</strong>
-                <span style={{ fontSize: 12, color: b.status === "Confirmed" ? COLORS.teal : COLORS.rust }}>
+                <span style={{ fontSize: 12, color: b.status === "Confirmed" ? COLORS.teal : b.status === "Cancelled" ? "#9C917A" : COLORS.rust }}>
                   {b.status}
                 </span>
               </div>
@@ -447,11 +502,27 @@ export default function App() {
                 {b.notes && <><br />Note: {b.notes}</>}
               </div>
               {b.status === "Pending confirmation" && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button
+                    onClick={() => confirmBooking(b.id)}
+                    style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: COLORS.teal, color: COLORS.white, fontSize: 13 }}
+                  >
+                    Mark as confirmed
+                  </button>
+                  <button
+                    onClick={() => cancelBooking(b.id)}
+                    style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${COLORS.rust}`, background: "transparent", color: COLORS.rust, fontSize: 13 }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {b.status === "Confirmed" && (
                 <button
-                  onClick={() => confirmBooking(b.id)}
-                  style={{ marginTop: 12, padding: "6px 14px", borderRadius: 6, border: "none", background: COLORS.teal, color: COLORS.white, fontSize: 13 }}
+                  onClick={() => cancelBooking(b.id)}
+                  style={{ marginTop: 12, padding: "6px 14px", borderRadius: 6, border: `1px solid ${COLORS.rust}`, background: "transparent", color: COLORS.rust, fontSize: 13 }}
                 >
-                  Mark as confirmed
+                  Cancel booking
                 </button>
               )}
             </div>
