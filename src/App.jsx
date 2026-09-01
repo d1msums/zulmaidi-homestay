@@ -386,7 +386,7 @@ export default function App() {
             </h1>
             <p className="sans" style={{ fontSize: 16, lineHeight: 1.6, color: COLORS.charcoal, maxWidth: 560 }}>
               One comfortable home, a short drive from the beach and Paka town. Air-conditioned rooms,
-              full kitchen, and free parking — ideal for families passing through Terengganu's east coast.
+              full kitchen, and free parking, ideal for families passing through Terengganu's east coast.
             </p>
             <div className="sans" style={{ display: "flex", gap: 24, marginTop: 20, fontSize: 14 }}>
               <div><strong style={{ color: COLORS.tealDeep }}>RM{WEEKDAY_PRICE}</strong> / weeknight</div>
